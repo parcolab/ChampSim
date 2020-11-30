@@ -6,7 +6,9 @@
 #include <fstream>
 
 #include "usimm/configfile.h"
-#include "usimm/params.h"
+//#include "usimm/params.h"
+
+#define log_base2(val) ((int)log2(val))
 
 uint8_t warmup_complete[NUM_CPUS], 
         simulation_complete[NUM_CPUS], 
@@ -504,6 +506,7 @@ int main(int argc, char** argv)
 	sigaction(SIGINT, &sigIntHandler, NULL);
 
   FILE* usimm_config_file;
+  FILE* vi_file;
 
     cout << endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << endl << endl;
 
@@ -575,6 +578,8 @@ int main(int argc, char** argv)
     // USIMM configuration //
     read_config_file(usimm_config_file);
 
+    // this variable is used for calculating power
+    int chips_per_rank = -1;
     // NUM_CPUS is determined by ChampSim
     /* Find the appropriate .vi file to read*/
     if (NUM_CHANNELS == 1 && NUM_CPUS == 1) {
