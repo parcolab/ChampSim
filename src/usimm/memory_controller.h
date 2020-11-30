@@ -5,6 +5,55 @@
 
 #include "../../inc/memory_class.h"
 #include "scheduler.h"
+//#include "params.h"
+
+//extern variables
+
+extern float VDD;
+extern float IDD0;
+extern float IDD1;
+extern float IDD2P0;
+extern float IDD2P1;
+extern float IDD2N;
+extern float IDD3P;
+extern float IDD3N;
+extern float IDD4R;
+extern float IDD4W;
+extern float IDD5;
+
+extern int PROCESSOR_CLK_MULTIPLIER;
+extern int NUM_CHANNELS ;// 1;
+extern int NUM_RANKS ;// 2;
+extern int NUM_BANKS ;// 8;
+extern int NUM_ROWS ;// 32768;
+extern int NUM_COLUMNS ;// 128;
+extern int CACHE_LINE_SIZE ;// 64;
+extern int ADDRESS_BITS ;// 32;
+
+extern int DRAM_CLK_FREQUENCY ;// 800;
+
+extern int T_RCD ;// 44;
+extern int T_RP ;// 44;
+extern int T_CAS ;// 44;
+extern int T_RAS ;// 112;
+extern int T_RC ;// 156;
+extern int T_CWD ;// 20;
+extern int T_WR ;// 48;
+extern int T_WTR ;// 24;
+extern int T_RTRS ;// 8;
+extern int T_DATA_TRANS ;// 16;
+extern int T_RTP ;// 24;
+extern int T_CCD ;// 16;
+extern int T_XP ;// 20;
+extern int T_XP_DLL ;// 40;
+extern int T_CKE ;// 16;
+extern int T_PD_MIN ;// 16;
+extern int T_RRD ;// 20;
+extern int T_FAW ;// 128;
+extern int T_REFI;
+extern int T_RFC;
+
+extern int ADDRESS_MAPPING ;// 1;
 
 // DRAM configuration
 #define DRAM_CHANNEL_WIDTH 8 // 8B

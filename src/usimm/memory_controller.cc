@@ -6,7 +6,7 @@
 
 #include "utils.h"
 
-#include "params.h"
+//#include "params.h"
 #include "scheduler.h"
 //#include "processor.h"
 #include "memory_controller.h"
@@ -355,7 +355,7 @@ MemoryController::init_new_node(optype_t type, PACKET* packet)
 		new_node->physical_address = packet->address;
 		//new_node->physical_address = physical_address;
 
-		//new_node->arrival_time = 0;
+		new_node->arrival_time = 0;
 
 		new_node->dispatch_time = -100;
 
