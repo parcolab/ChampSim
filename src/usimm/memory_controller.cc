@@ -7,9 +7,9 @@
 #include "utils.h"
 
 #include "params.h"
-#include "memory_controller.h"
 #include "scheduler.h"
 #include "processor.h"
+#include "memory_controller.h"
 
 // ROB Structure, used to release stall on instructions 
 // when the read request completes
@@ -26,7 +26,7 @@ extern long long int CYCLE_VAL;
 int activation_record[MAX_NUM_CHANNELS][MAX_NUM_RANKS][BIG_ACTIVATION_WINDOW];
 
 // record an activate in the activation record
-void record_activate(int channel, int rank, long long int cycle)
+void MemoryController::record_activate(int channel, int rank, long long int cycle)
 {
 	assert(activation_record[channel][rank][(cycle%BIG_ACTIVATION_WINDOW)] == 0); //can't have two commands issued the same cycle - hence no two activations in the same cycle
 	activation_record[channel][rank][(cycle%BIG_ACTIVATION_WINDOW)]=1;
@@ -35,7 +35,7 @@ void record_activate(int channel, int rank, long long int cycle)
 }
 
 // Have there been 3 or less activates in the last T_FAW period 
-int is_T_FAW_met(int channel,int rank, int cycle)
+int MemoryController::is_T_FAW_met(int channel,int rank, int cycle)
 {
 	int start = cycle;
 
@@ -64,7 +64,7 @@ int is_T_FAW_met(int channel,int rank, int cycle)
 }
 
 // shift the moving window, clear out the past
-void flush_activate_record(int channel, int rank, long long int cycle)
+void MemoryController::flush_activate_record(int channel, int rank, long long int cycle)
 {
 	if(cycle >= T_FAW+PROCESSOR_CLK_MULTIPLIER)
 	{
@@ -75,9 +75,9 @@ void flush_activate_record(int channel, int rank, long long int cycle)
 }
 
 // initialize dram variables and statistics
-void init_memory_controller_vars()
+void MemoryController::init_memory_controller_vars()
 {
-        num_read_merge =0;
+  num_read_merge =0;
 	num_write_merge =0;
 	for(int i=0; i<NUM_CHANNELS; i++)
 	{
@@ -167,7 +167,7 @@ void init_memory_controller_vars()
 /********************************************************/
 
 
-unsigned int log_base2(unsigned int new_value)
+unsigned int MemoryController::log_base2(unsigned int new_value)
 {
 	int i;
 	for (i = 0; i < 32; i++) {
@@ -182,7 +182,7 @@ unsigned int log_base2(unsigned int new_value)
 // constituent channel, rank, bank, row and column ids. 
 // Note : To prevent memory leaks, call free() on the pointer returned
 // by this function after you have used the return value.
-dram_address_t * calc_dram_addr(long long int physical_address)
+MemoryController::dram_address_t * MemoryController::calc_dram_addr(long long int physical_address)
 {
 
 
@@ -273,7 +273,11 @@ dram_address_t * calc_dram_addr(long long int physical_address)
 
 // Function to create a new request node to be inserted into the read
 // or write queue.
-void * init_new_node(long long int physical_address, long long int arrival_time, optype_t type, int thread_id, int instruction_id, long long int instruction_pc)
+MemoryController::request_t* 
+MemoryController::init_new_node(long long int physical_address, 
+                                long long int arrival_time, optype_t type, 
+                                int thread_id, int instruction_id, 
+                                long long int instruction_pc)
 {
 	request_t * new_node = NULL;
 
@@ -339,7 +343,7 @@ void * init_new_node(long long int physical_address, long long int arrival_time,
 // serviced when the original request completes.
 
 #define RQ_LOOKUP_LATENCY 1
-int read_matches_write_or_read_queue(long long int physical_address)
+int MemoryController::read_matches_write_or_read_queue(long long int physical_address)
 {
 	//get channel info
 	dram_address_t * this_addr = calc_dram_addr(physical_address);
@@ -372,7 +376,7 @@ int read_matches_write_or_read_queue(long long int physical_address)
 }
 
 // Function to merge writes to the same address
-int write_exists_in_write_queue(long long int physical_address)
+int MemoryController::write_exists_in_write_queue(long long int physical_address)
 {
 	//get channel info
 	dram_address_t * this_addr = calc_dram_addr(physical_address);
@@ -395,7 +399,11 @@ int write_exists_in_write_queue(long long int physical_address)
 }
 
 // Insert a new read to the read queue
-request_t * insert_read(long long int physical_address, long long int arrival_time, int thread_id, int instruction_id, long long int instruction_pc)
+MemoryController::request_t* 
+MemoryController::insert_read(long long int physical_address, 
+                              long long int arrival_time, 
+                              int thread_id, int instruction_id, 
+                              long long int instruction_pc)
 {
 
 	optype_t this_op = READ;
@@ -419,7 +427,10 @@ request_t * insert_read(long long int physical_address, long long int arrival_ti
 }
 
 // Insert a new write to the write queue
-request_t * insert_write(long long int physical_address, long long int arrival_time, int thread_id, int instruction_id)
+MemoryController::request_t* 
+MemoryController::insert_write(long long int physical_address, 
+                               long long int arrival_time, 
+                               int thread_id, int instruction_id)
 {
 	optype_t this_op = WRITE;
 
@@ -444,7 +455,7 @@ request_t * insert_write(long long int physical_address, long long int arrival_t
 // Each DRAM cycle, this function iterates over the read queue and
 // updates the next_command and command_issuable fields to mark which
 // commands can be issued this cycle
-void update_read_queue_commands(int channel)
+void MemoryController::update_read_queue_commands(int channel)
 {
 	request_t * curr = NULL;
 
@@ -546,7 +557,7 @@ void update_read_queue_commands(int channel)
 }
 
 // Similar to update_read_queue above, but for write queue
-void update_write_queue_commands(int channel)
+void MemoryController::update_write_queue_commands(int channel)
 {
 	request_t * curr = NULL;
 
@@ -639,7 +650,7 @@ void update_write_queue_commands(int channel)
 }
 
 // Remove finished requests from the queues.
-void clean_queues(int channel)
+void MemoryController::clean_queues(int channel)
 {
 
 	request_t * rd_ptr =  NULL;
@@ -698,7 +709,7 @@ void clean_queues(int channel)
 // Upon issuing the request, the dram_state is changed and the
 // next_"cmd" variables are updated to indicate when the next "cmd"
 // can be issued to each bank
-int issue_request_command(request_t * request) 
+int MemoryController::issue_request_command(request_t * request) 
 {
 	long long int cycle =  CYCLE_VAL;
 	if(request->command_issuable != 1 || command_issued_current_cycle[request->dram_addr.channel])
@@ -961,7 +972,7 @@ int issue_request_command(request_t * request)
 
 // Function called to see if the rank can be transitioned into a fast low
 // power state - ACT_PDN or PRE_PDN_FAST. 
-int is_powerdown_fast_allowed(int channel, int rank)
+int MemoryController::is_powerdown_fast_allowed(int channel, int rank)
 {
 	int flag =0;
 
@@ -985,7 +996,7 @@ int is_powerdown_fast_allowed(int channel, int rank)
 
 // Function to see if the rank can be transitioned into a slow low
 // power state - i.e. PRE_PDN_SLOW
-int is_powerdown_slow_allowed(int channel, int rank)
+int MemoryController::is_powerdown_slow_allowed(int channel, int rank)
 {
 	int flag =0;
 
@@ -1010,7 +1021,7 @@ int is_powerdown_slow_allowed(int channel, int rank)
 }
 
 // Function to see if the rank can be powered up
-int is_powerup_allowed(int channel, int rank)
+int MemoryController::is_powerup_allowed(int channel, int rank)
 {
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank])
 	  return 0;
@@ -1031,7 +1042,7 @@ int is_powerup_allowed(int channel, int rank)
 }
 
 // Function to see if the bank can be activated or not
-int is_activate_allowed(int channel, int rank, int bank)
+int MemoryController::is_activate_allowed(int channel, int rank, int bank)
 {
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank] || (CYCLE_VAL + T_RAS > refresh_issue_deadline[channel][rank])) 
 	  return 0;
@@ -1042,7 +1053,7 @@ int is_activate_allowed(int channel, int rank, int bank)
 }
 
 // Function to see if the rank can be precharged or not
-int is_autoprecharge_allowed(int channel, int rank, int bank)
+int MemoryController::is_autoprecharge_allowed(int channel, int rank, int bank)
 {
   long long int start_precharge = 0;
   if(cas_issued_current_cycle[channel][rank][bank] == 1)
@@ -1058,7 +1069,7 @@ int is_autoprecharge_allowed(int channel, int rank, int bank)
 
 
 // Function to see if the rank can be precharged or not
-int is_precharge_allowed(int channel, int rank, int bank)
+int MemoryController::is_precharge_allowed(int channel, int rank, int bank)
 {
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank] || (CYCLE_VAL + T_RP > refresh_issue_deadline[channel][rank])) 
 	    return 0;
@@ -1071,7 +1082,7 @@ int is_precharge_allowed(int channel, int rank, int bank)
 
 
 // function to see if all banks can be precharged this cycle
-int is_all_bank_precharge_allowed(int channel, int rank)
+int MemoryController::is_all_bank_precharge_allowed(int channel, int rank)
 {
   	int flag = 0;
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank] || (CYCLE_VAL + T_RP > refresh_issue_deadline[channel][rank])) 
@@ -1089,7 +1100,7 @@ int is_all_bank_precharge_allowed(int channel, int rank)
 
 // function to see if refresh can be allowed this cycle
 
-int is_refresh_allowed(int channel, int rank)
+int MemoryController::is_refresh_allowed(int channel, int rank)
 {
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank]) 
 	  return 0;
@@ -1103,7 +1114,7 @@ int is_refresh_allowed(int channel, int rank)
 }
 
 // Function to put a rank into the low power mode
-int issue_powerdown_command(int channel, int rank, command_t cmd)
+int MemoryController::issue_powerdown_command(int channel, int rank, command_t cmd)
 {
         if(command_issued_current_cycle[channel]) {
 		printf("PANIC : SCHED_ERROR: Got beat. POWER_DOWN command not issuable in cycle:%lld\n", CYCLE_VAL);
@@ -1156,7 +1167,7 @@ int issue_powerdown_command(int channel, int rank, command_t cmd)
 
 
 // Function to power a rank up
-int issue_powerup_command(int channel, int rank)
+int MemoryController::issue_powerup_command(int channel, int rank)
 {
 	if(!is_powerup_allowed(channel,rank)) 
 	{
@@ -1217,7 +1228,7 @@ int issue_powerup_command(int channel, int rank)
 }
 
 // Function to issue a precharge command to a specific bank
-int issue_autoprecharge(int channel, int rank, int bank)
+int MemoryController::issue_autoprecharge(int channel, int rank, int bank)
 {
   if(!is_autoprecharge_allowed(channel,rank,bank))
     return 0;
@@ -1255,7 +1266,7 @@ int issue_autoprecharge(int channel, int rank, int bank)
 }
 
 // Function to issue an activate command to a specific row
-int issue_activate_command(int channel, int rank, int bank, long long int row)
+int MemoryController::issue_activate_command(int channel, int rank, int bank, long long int row)
 {
   if(!is_activate_allowed(channel, rank, bank))
   {
@@ -1303,7 +1314,7 @@ int issue_activate_command(int channel, int rank, int bank, long long int row)
 }
 
 // Function to issue a precharge command to a specific bank
-int issue_precharge_command(int channel, int rank, int bank)
+int MemoryController::issue_precharge_command(int channel, int rank, int bank)
 {
 	if(!is_precharge_allowed(channel, rank, bank))
 	{
@@ -1333,7 +1344,7 @@ int issue_precharge_command(int channel, int rank, int bank)
 }
 
 // Function to precharge a rank
-int issue_all_bank_precharge_command(int channel, int rank)
+int MemoryController::issue_all_bank_precharge_command(int channel, int rank)
 {
 	if(!is_all_bank_precharge_allowed(channel, rank))
 	{
@@ -1353,7 +1364,7 @@ int issue_all_bank_precharge_command(int channel, int rank)
 }
 
 // Function to issue a refresh
-int issue_refresh_command(int channel,int rank)
+int MemoryController::issue_refresh_command(int channel,int rank)
 {
 
 	if(!is_refresh_allowed(channel,rank))
@@ -1439,7 +1450,7 @@ int issue_refresh_command(int channel,int rank)
 	}
 }
 
-void issue_forced_refresh_commands(int channel, int rank)
+void MemoryController::issue_forced_refresh_commands(int channel, int rank)
 {
 	for(int b=0; b < NUM_BANKS; b++)
 	{
@@ -1455,7 +1466,7 @@ void issue_forced_refresh_commands(int channel, int rank)
 }
 
 
-void gather_stats(int channel)
+void MemoryController::gather_stats(int channel)
 {
 	for(int i=0; i<NUM_RANKS; i++)
 	{
@@ -1482,7 +1493,7 @@ void gather_stats(int channel)
 	}
 }
 
-void print_stats(int channel)
+void MemoryController::print_stats(int channel)
 {
 	long long int activates_for_reads = 0;
 	long long int activates_for_spec = 0;
@@ -1522,7 +1533,7 @@ void print_stats(int channel)
 	}
 }
 
-void update_issuable_commands(int channel)
+void MemoryController::update_issuable_commands(int channel)
 {
 	for(int rank = 0; rank < NUM_RANKS; rank++)
 	{
@@ -1543,7 +1554,7 @@ void update_issuable_commands(int channel)
 
 // function that updates the dram state and schedules auto-refresh if
 // necessary. This is called every DRAM cycle
-void update_memory()
+void MemoryController::update_memory()
 {
 	for(int channel=0;channel<NUM_CHANNELS;channel++)
 	{
@@ -1609,7 +1620,7 @@ void update_memory()
 // Units : Time- ns; Current mA; Voltage V; Power mW; 
 //------------------------------------------------------------
 
- float calculate_power(int channel, int rank, int print_stats_type, int chips_per_rank)
+ float MemoryController::calculate_power(int channel, int rank, int print_stats_type, int chips_per_rank)
 {
 	/*
 	Power is calculated using the equations from Technical Note "TN-41-01: Calculating Memory System Power for DDR"
