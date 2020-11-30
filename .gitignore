@@ -13,3 +13,5 @@ obj/
 *.swp
 
 error.txt
+
+dpc3_traces/
