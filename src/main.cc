@@ -5,6 +5,9 @@
 #include "uncore.h"
 #include <fstream>
 
+#include "usimm/configfile.h"
+#include "usimm/params.h"
+
 uint8_t warmup_complete[NUM_CPUS], 
         simulation_complete[NUM_CPUS], 
         all_warmup_complete = 0, 
@@ -500,6 +503,8 @@ int main(int argc, char** argv)
 	sigIntHandler.sa_flags = 0;
 	sigaction(SIGINT, &sigIntHandler, NULL);
 
+  FILE* usimm_config_file;
+
     cout << endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << endl << endl;
 
     // initialize knobs
@@ -518,12 +523,13 @@ int main(int argc, char** argv)
             {"cloudsuite", no_argument, 0, 'c'},
             {"low_bandwidth",  no_argument, 0, 'b'},
             {"traces",  no_argument, 0, 't'},
+            {"usimm_config_file", required_argument, 0, 'u'},
             {0, 0, 0, 0}      
         };
 
         int option_index = 0;
 
-        c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index);
+        c = getopt_long_only(argc, argv, "wihsbu", long_options, &option_index);
 
         // no more option characters
         if (c == -1)
@@ -551,6 +557,13 @@ int main(int argc, char** argv)
             case 't':
                 traces_encountered = 1;
                 break;
+            case 'u':
+                usimm_config_file = fopen(optarg, "r");
+                if (!usimm_config_file) {
+                  printf("Missing system configuration file.  Quitting. \n");
+                  return -1;
+                }
+                break;
             default:
                 abort();
         }
@@ -558,6 +571,69 @@ int main(int argc, char** argv)
         if (traces_encountered == 1)
             break;
     }
+
+    // USIMM configuration //
+    read_config_file(usimm_config_file);
+
+    // NUM_CPUS is determined by ChampSim
+    /* Find the appropriate .vi file to read*/
+    if (NUM_CHANNELS == 1 && NUM_CPUS == 1) {
+        vi_file = fopen("usimm_configs/1Gb_x4.vi", "r"); 
+      chips_per_rank= 16;
+        printf("Reading vi file: 1Gb_x4.vi\t\n%d Chips per Rank\n",chips_per_rank); 
+    } else if (NUM_CHANNELS == 1 && NUM_CPUS == 2) {
+        vi_file = fopen("usimm_configs/2Gb_x4.vi", "r");
+      chips_per_rank= 16;
+        printf("Reading vi file: 2Gb_x4.vi\t\n%d Chips per Rank\n",chips_per_rank);
+    } else if (NUM_CHANNELS == 1 && (NUM_CPUS > 2) && (NUM_CPUS <= 4)) {
+        vi_file = fopen("usimm_configs/4Gb_x4.vi", "r");
+      chips_per_rank= 16;
+        printf("Reading vi file: 4Gb_x4.vi\t\n%d Chips per Rank\n",chips_per_rank);
+    } else if (NUM_CHANNELS == 4 && NUM_CPUS == 1) {
+        vi_file = fopen("usimm_configs/1Gb_x16.vi", "r");
+      chips_per_rank= 4;
+        printf("Reading vi file: 1Gb_x16.vi\t\n%d Chips per Rank\n",chips_per_rank);
+    } else if (NUM_CHANNELS == 4 && NUM_CPUS == 2) {
+        vi_file = fopen("usimm_configs/1Gb_x8.vi", "r");
+      chips_per_rank= 8;
+        printf("Reading vi file: 1Gb_x8.vi\t\n%d Chips per Rank\n",chips_per_rank);
+    } else if (NUM_CHANNELS == 4 && (NUM_CPUS > 2) && (NUM_CPUS <= 4)) {
+        vi_file = fopen("usimm_configs/2Gb_x8.vi", "r");
+      chips_per_rank= 8;
+        printf("Reading vi file: 2Gb_x8.vi\t\n%d Chips per Rank\n",chips_per_rank);
+    } else if (NUM_CHANNELS == 4 && (NUM_CPUS > 4) && (NUM_CPUS <= 8)) {
+        vi_file = fopen("usimm_configs/4Gb_x8.vi", "r");
+      chips_per_rank= 8;
+        printf("Reading vi file: 4Gb_x8.vi\t\n%d Chips per Rank\n",chips_per_rank);
+    } else if (NUM_CHANNELS == 4 && (NUM_CPUS > 8) && (NUM_CPUS <= 16)) {
+        vi_file = fopen("usimm_configs/4Gb_x4.vi", "r");
+      chips_per_rank= 16;
+        printf("Reading vi file: 4Gb_x4.vi\t\n%d Chips per Rank\n",chips_per_rank);
+    } else {
+      printf ("PANIC:: Channel - Core configuration not supported\n");
+      assert (-1);
+    }
+  	if (!vi_file) {
+      printf("Missing DRAM chip parameter file.  Quitting. \n");
+  	  return -5;
+    }
+    assert((log_base2(NUM_CHANNELS) + log_base2(NUM_RANKS) + 
+           log_base2(NUM_BANKS) + log_base2(NUM_ROWS) + 
+           log_base2(NUM_COLUMNS) + log_base2(CACHE_LINE_SIZE)) == ADDRESS_BITS );
+    // TODO: not clear for me
+    /* Increase the address space and rows per bank depending on the number of input traces. */
+    ADDRESS_BITS = ADDRESS_BITS + log_base2(NUM_CPUS);
+    int pow_of_2_cores = 0;
+    if (NUM_CPUS == 1) {
+      pow_of_2_cores = 1;
+    }
+    else {
+    pow_of_2_cores = 1 << ((int)log_base2(NUM_CPUS-1) + 1);
+    }
+    NUM_ROWS = NUM_ROWS * pow_of_2_cores;
+
+    read_config_file(vi_file);
+    print_params();
 
     // consequences of knobs
     cout << "Warmup Instructions: " << warmup_instructions << endl;

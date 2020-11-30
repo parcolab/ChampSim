@@ -198,25 +198,25 @@ void read_config_file(FILE * fin)
 				PROCESSOR_CLK_MULTIPLIER =  input_int;
 				break;
 
-			case robsize_token:
-				fscanf(fin,"%d",&input_int);
-				ROBSIZE =  input_int;
-				break;
+			//case robsize_token:
+				//fscanf(fin,"%d",&input_int);
+				//ROBSIZE =  input_int;
+				//break;
 
-			case max_retire_token:
-				fscanf(fin,"%d",&input_int);
-				MAX_RETIRE =  input_int;
-				break;
+			//case max_retire_token:
+				//fscanf(fin,"%d",&input_int);
+				//MAX_RETIRE =  input_int;
+				//break;
 
-			case max_fetch_token:
-				fscanf(fin,"%d",&input_int);
-				MAX_FETCH =  input_int;
-				break;
+			//case max_fetch_token:
+				//fscanf(fin,"%d",&input_int);
+				//MAX_FETCH =  input_int;
+				//break;
 
-			case pipelinedepth_token:
-				fscanf(fin,"%d",&input_int);
-				PIPELINEDEPTH =  input_int;
-				break;
+			//case pipelinedepth_token:
+				//fscanf(fin,"%d",&input_int);
+				//PIPELINEDEPTH =  input_int;
+				//break;
 
 
 			case num_channels_token:
@@ -245,10 +245,10 @@ void read_config_file(FILE * fin)
 				NUM_COLUMNS =  input_int;
 				break;
 
-			case cache_line_size_token:
-				fscanf(fin,"%d",&input_int);
-				CACHE_LINE_SIZE =  input_int;
-				break;
+			//case cache_line_size_token:
+				//fscanf(fin,"%d",&input_int);
+				//CACHE_LINE_SIZE =  input_int;
+				//break;
 
 			case address_bits_token:
 				fscanf(fin,"%d",&input_int);
@@ -405,20 +405,20 @@ void read_config_file(FILE * fin)
 				IDD5 = input_float;
 				break;
 
-			case wq_capacity_token:
-				fscanf(fin,"%d",&input_int);
-				WQ_CAPACITY = input_int;
-				break;
+			//case wq_capacity_token:
+				//fscanf(fin,"%d",&input_int);
+				//WQ_CAPACITY = input_int;
+				//break;
 
 			case address_mapping_token:
 				fscanf(fin,"%d",&input_int);
 				ADDRESS_MAPPING= input_int;
 				break;
 			
-			case wq_lookup_latency_token:
-				fscanf(fin,"%d",&input_int);
-				WQ_LOOKUP_LATENCY = input_int;
-				break;
+			//case wq_lookup_latency_token:
+				//fscanf(fin,"%d",&input_int);
+				//WQ_LOOKUP_LATENCY = input_int;
+				//break;
 
 			case unknown_token:
 			default:
@@ -434,16 +434,16 @@ void print_params()
 {
 	printf("----------------------------------------------------------------------------------------\n");
 	printf("------------------------\n");
-	printf("- SIMULATOR PARAMETERS -\n");
+	printf("- USIMM SIMULATOR PARAMETERS -\n");
 	printf("------------------------\n");
-	printf("\n-------------\n");
-	printf("- PROCESSOR -\n");
-	printf("-------------\n");
-	printf("PROCESSOR_CLK_MULTIPLIER:   %6d\n", PROCESSOR_CLK_MULTIPLIER);
-	printf("ROBSIZE:                    %6d\n", ROBSIZE);
-	printf("MAX_FETCH:                  %6d\n", MAX_FETCH);
-	printf("MAX_RETIRE:                 %6d\n", MAX_RETIRE);
-	printf("PIPELINEDEPTH:              %6d\n", PIPELINEDEPTH);          
+	//printf("\n-------------\n");
+	//printf("- PROCESSOR -\n");
+	//printf("-------------\n");
+	//printf("PROCESSOR_CLK_MULTIPLIER:   %6d\n", PROCESSOR_CLK_MULTIPLIER);
+	//printf("ROBSIZE:                    %6d\n", ROBSIZE);
+	//printf("MAX_FETCH:                  %6d\n", MAX_FETCH);
+	//printf("MAX_RETIRE:                 %6d\n", MAX_RETIRE);
+	//printf("PIPELINEDEPTH:              %6d\n", PIPELINEDEPTH);          
 
 	printf("\n---------------\n");
 	printf("- DRAM Config -\n");
@@ -495,9 +495,9 @@ void print_params()
 	printf("\n-------------------\n");
 	printf("- DRAM Controller -\n");
 	printf("-------------------\n");
-	printf("WQ_CAPACITY:                %6d\n", WQ_CAPACITY);
+	//printf("WQ_CAPACITY:                %6d\n", WQ_CAPACITY);
   printf("ADDRESS_MAPPING:            %6d\n", ADDRESS_MAPPING);
-  printf("WQ_LOOKUP_LATENCY:          %6d\n", WQ_LOOKUP_LATENCY);
+  //printf("WQ_LOOKUP_LATENCY:          %6d\n", WQ_LOOKUP_LATENCY);
 	printf("\n----------------------------------------------------------------------------------------\n");
 
 
