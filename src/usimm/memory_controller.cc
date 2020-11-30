@@ -13,7 +13,7 @@
 
 // ROB Structure, used to release stall on instructions 
 // when the read request completes
-extern struct robstructure * ROB;
+//extern struct robstructure * ROB;
 
 // Current Processor Cycle
 extern long long int CYCLE_VAL;
@@ -801,7 +801,7 @@ int MemoryController::issue_request_command(request_t * request)
 			request->request_served = 1;
 
 			// update the ROB with the completion time
-			ROB[request->thread_id].comptime[request->instruction_id] = request->completion_time+PIPELINEDEPTH;
+			//ROB[request->thread_id].comptime[request->instruction_id] = request->completion_time+PIPELINEDEPTH;
 
 			stats_reads_completed[channel] ++;
 			stats_average_read_latency[channel] = ((stats_reads_completed[channel]-1)*stats_average_read_latency[channel] + request->latency)/stats_reads_completed[channel];
