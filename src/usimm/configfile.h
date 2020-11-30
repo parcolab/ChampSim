@@ -72,14 +72,14 @@ token_t tokenize(char * input){
 	return comment_token;
   } else if (strncmp(input, "PROCESSOR_CLK_MULTIPLIER",length) == 0) {
 	return processor_clk_multiplier_token;
-  } else if (strncmp(input, "ROBSIZE",length) == 0) {
-	return robsize_token;
-  } else if (strncmp(input, "MAX_RETIRE",length) == 0) {
-	return max_retire_token;
-  } else if (strncmp(input, "MAX_FETCH",length) == 0) {
-	return max_fetch_token;
-  } else if (strncmp(input, "PIPELINEDEPTH",length) == 0) {
-	return pipelinedepth_token;
+  //} else if (strncmp(input, "ROBSIZE",length) == 0) {
+	//return robsize_token;
+  //} else if (strncmp(input, "MAX_RETIRE",length) == 0) {
+	//return max_retire_token;
+  //} else if (strncmp(input, "MAX_FETCH",length) == 0) {
+	//return max_fetch_token;
+  //} else if (strncmp(input, "PIPELINEDEPTH",length) == 0) {
+	//return pipelinedepth_token;
   } else if (strncmp(input, "NUM_CHANNELS",length) == 0) {
 	return num_channels_token;
   } else if (strncmp(input, "NUM_RANKS",length) == 0) { 
@@ -90,8 +90,8 @@ token_t tokenize(char * input){
 	return num_rows_token;
   } else if (strncmp(input, "NUM_COLUMNS",length) == 0) {
 	return num_columns_token;
-  } else if (strncmp(input, "CACHE_LINE_SIZE",length) == 0) {
-	return cache_line_size_token;
+  //} else if (strncmp(input, "CACHE_LINE_SIZE",length) == 0) {
+	//return cache_line_size_token;
   } else if (strncmp(input, "ADDRESS_BITS",length) == 0) {
 	return address_bits_token;
   } else if (strncmp(input, "DRAM_CLK_FREQUENCY",length) == 0) {
@@ -154,12 +154,12 @@ token_t tokenize(char * input){
 	return idd4w_token;
   } else if (strncmp(input, "IDD5",length) == 0) {
 	return idd5_token;
-  } else if (strncmp(input, "WQ_CAPACITY",length) == 0) {
-	return wq_capacity_token;
+  //} else if (strncmp(input, "WQ_CAPACITY",length) == 0) {
+	//return wq_capacity_token;
   } else if (strncmp(input, "ADDRESS_MAPPING",length) == 0) {
 	return address_mapping_token;
-  } else if (strncmp(input, "WQ_LOOKUP_LATENCY",length) == 0) {
-	return wq_lookup_latency_token;
+  //} else if (strncmp(input, "WQ_LOOKUP_LATENCY",length) == 0) {
+	//return wq_lookup_latency_token;
   }
 
   else {

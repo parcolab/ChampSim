@@ -5,7 +5,7 @@
 /* Processor params */
 /********************/
 // number of cores in mulicore 
-int NUMCORES;
+//int NUMCORES;
 
 // processor clock frequency multiplier : multiplying the
 // DRAM_CLK_FREQUENCY by the following parameter gives the processor
@@ -13,16 +13,16 @@ int NUMCORES;
  int PROCESSOR_CLK_MULTIPLIER;
 
 //size of ROB
- int ROBSIZE ;// 128;		
+ //int ROBSIZE ;// 128;		
 
 // maximum commit width
- int MAX_RETIRE ;// 2;
+ //int MAX_RETIRE ;// 2;
 
 // maximum instruction fetch width
- int MAX_FETCH ;// 4;	
+ //int MAX_FETCH ;// 4;	
 
 // depth of pipeline
- int PIPELINEDEPTH ;// 5;
+ //int PIPELINEDEPTH ;// 5;
 
 
 /*****************************/
@@ -151,7 +151,7 @@ float IDD5;
 /******************************/
 
 // maximum capacity of write queue (per channel)
- int WQ_CAPACITY ;// 64;
+ //int WQ_CAPACITY ;// 64;
 
 //  int ADDRESS_MAPPING mode
 // 1 is consecutive cache-lines to same row
@@ -159,7 +159,7 @@ float IDD5;
  int ADDRESS_MAPPING ;// 1;
 
  // WQ associative lookup 
- int WQ_LOOKUP_LATENCY;
+ //int WQ_LOOKUP_LATENCY;
 
 
 #endif // __PARAMS_H__
