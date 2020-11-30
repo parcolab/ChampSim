@@ -8,7 +8,7 @@
 
 #include "params.h"
 #include "scheduler.h"
-#include "processor.h"
+//#include "processor.h"
 #include "memory_controller.h"
 
 // ROB Structure, used to release stall on instructions 
@@ -16,7 +16,7 @@
 //extern struct robstructure * ROB;
 
 // Current Processor Cycle
-extern long long int CYCLE_VAL;
+//extern long long int CYCLE_VAL;
 
 #define max(a,b) (((a)>(b))?(a):(b))
 
@@ -24,6 +24,54 @@ extern long long int CYCLE_VAL;
 
 // moving window that captures each activate issued in the past 
 int activation_record[MAX_NUM_CHANNELS][MAX_NUM_RANKS][BIG_ACTIVATION_WINDOW];
+
+MemoryController::MemoryController(std::string name) : NAME(name) {
+  init_memory_controller_vars();
+  for (int i = 0; i < DRAM_CHANNELS; ++i) {
+    pending_queue.push_back(std::deque<request_t*>());
+    wq_full.push_back(0);
+  }
+  fill_level = FILL_DRAM;
+}
+
+void MemoryController::increment_WQ_FULL(uint64_t address) {
+	//get channel info
+	dram_address_t * this_addr = calc_dram_addr(address);
+	int channel = this_addr->channel;
+	free(this_addr);
+  wq_full[channel] += 1;
+}
+
+
+uint32_t MemoryController::get_occupancy(uint8_t queue_type, uint64_t address)
+{
+	//get channel info
+	dram_address_t * this_addr = calc_dram_addr(address);
+	int channel = this_addr->channel;
+	free(this_addr);
+  if (queue_type == 1)
+      //return RQ[channel].occupancy;
+      return read_queue_length[channel];
+  else if (queue_type == 2)
+      //return WQ[channel].occupancy;
+      return write_queue_length[channel];
+
+  return 0;
+}
+
+uint32_t MemoryController::get_size(uint8_t queue_type, uint64_t address)
+{
+	//get channel info
+	dram_address_t * this_addr = calc_dram_addr(address);
+	int channel = this_addr->channel;
+	free(this_addr);
+  if (queue_type == 1)
+      return DRAM_RQ_SIZE;
+  else if (queue_type == 2)
+      return DRAM_WQ_SIZE;
+
+  return 0;
+}
 
 void MemoryController::schedule(int channel) {
   schedule(channel);
@@ -186,6 +234,8 @@ unsigned int MemoryController::log_base2(unsigned int new_value)
 // constituent channel, rank, bank, row and column ids. 
 // Note : To prevent memory leaks, call free() on the pointer returned
 // by this function after you have used the return value.
+
+// Note: PACKET address does not include byte offset.
 MemoryController::dram_address_t * MemoryController::calc_dram_addr(long long int physical_address)
 {
 
@@ -197,7 +247,7 @@ MemoryController::dram_address_t * MemoryController::calc_dram_addr(long long in
 	int bankBitWidth = log_base2(NUM_BANKS);
 	int rowBitWidth = log_base2(NUM_ROWS);
 	int colBitWidth = log_base2(NUM_COLUMNS);
-	int byteOffsetWidth = log_base2(CACHE_LINE_SIZE);
+	//int byteOffsetWidth = log_base2(CACHE_LINE_SIZE);
 
 
 
@@ -207,7 +257,8 @@ MemoryController::dram_address_t * MemoryController::calc_dram_addr(long long in
 
 	input_a = physical_address;
 
-	input_a = input_a >> byteOffsetWidth;		  // strip out the cache_offset
+  // ChampSim already truncates byte offset
+	//input_a = input_a >> byteOffsetWidth;		  // strip out the cache_offset
 
 
 	if(ADDRESS_MAPPING == 1)
@@ -278,10 +329,11 @@ MemoryController::dram_address_t * MemoryController::calc_dram_addr(long long in
 // Function to create a new request node to be inserted into the read
 // or write queue.
 MemoryController::request_t* 
-MemoryController::init_new_node(long long int physical_address, 
-                                long long int arrival_time, optype_t type, 
-                                int thread_id, int instruction_id, 
-                                long long int instruction_pc)
+//MemoryController::init_new_node(long long int physical_address, 
+                                //long long int arrival_time, optype_t type, 
+                                //int thread_id, int instruction_id, 
+                                //long long int instruction_pc)
+MemoryController::init_new_node(optype_t type, PACKET* packet)
 {
 	request_t * new_node = NULL;
 
@@ -295,10 +347,15 @@ MemoryController::init_new_node(long long int physical_address,
 	}
 	else
 	{
+    // CHAMP SIM
+    new_node->champsim_cpu_id = packet->cpu;
+    new_node->champsim_instruction_id = packet->instr_id;
+    new_node->champsim_packet = packet;
 
-		new_node->physical_address = physical_address;
+		new_node->physical_address = packet->address;
+		//new_node->physical_address = physical_address;
 
-		new_node->arrival_time = arrival_time;
+		//new_node->arrival_time = 0;
 
 		new_node->dispatch_time = -100;
 
@@ -306,7 +363,7 @@ MemoryController::init_new_node(long long int physical_address,
 
 		new_node->latency = -100;
 
-		new_node->thread_id = thread_id;
+		//new_node->thread_id = thread_id;
 
 		new_node->next_command = NOP;
 
@@ -316,15 +373,16 @@ MemoryController::init_new_node(long long int physical_address,
 
 		new_node->request_served = 0;
 
-		new_node->instruction_id = instruction_id;
+		//new_node->instruction_id = instruction_id;
 
-		new_node->instruction_pc = instruction_pc;
+		//new_node->instruction_pc = instruction_pc;
 
 		new_node->next = NULL;
 
-		dram_address_t * this_node_addr = calc_dram_addr(physical_address);
+		dram_address_t * this_node_addr = calc_dram_addr(packet->address);
 
-		new_node->dram_addr.actual_address = physical_address;
+    // actual address does not include byte offset
+		new_node->dram_addr.actual_address = packet->address;
 		new_node->dram_addr.channel = this_node_addr->channel;
 		new_node->dram_addr.rank = this_node_addr->rank;
 		new_node->dram_addr.bank = this_node_addr->bank;
@@ -347,6 +405,7 @@ MemoryController::init_new_node(long long int physical_address,
 // serviced when the original request completes.
 
 #define RQ_LOOKUP_LATENCY 1
+/*
 int MemoryController::read_matches_write_or_read_queue(long long int physical_address)
 {
 	//get channel info
@@ -378,8 +437,10 @@ int MemoryController::read_matches_write_or_read_queue(long long int physical_ad
 	}
 	return 0;
 }
+*/
 
 // Function to merge writes to the same address
+/*
 int MemoryController::write_exists_in_write_queue(long long int physical_address)
 {
 	//get channel info
@@ -401,58 +462,147 @@ int MemoryController::write_exists_in_write_queue(long long int physical_address
 	return 0;
 
 }
+*/
 
-// Insert a new read to the read queue
+
 MemoryController::request_t* 
-MemoryController::insert_read(long long int physical_address, 
-                              long long int arrival_time, 
-                              int thread_id, int instruction_id, 
-                              long long int instruction_pc)
+MemoryController::matches_write_queue(PACKET* packet)
 {
-
-	optype_t this_op = READ;
-
 	//get channel info
-	dram_address_t * this_addr = calc_dram_addr(physical_address);
+	dram_address_t * this_addr = calc_dram_addr(packet->address);
 	int channel = this_addr->channel;
 	free(this_addr);
 
-	stats_reads_seen[channel] ++;
+	request_t * wr_ptr = NULL;
+	LL_FOREACH(write_queue_head[channel], wr_ptr)
+	{
+		if(wr_ptr->physical_address == packet->address)
+		{
+		  num_read_merge ++;
+		  stats_reads_merged_per_channel[channel]++;
+      return wr_ptr;
+		}
+	}
 
-	request_t * new_node = init_new_node(physical_address, arrival_time, this_op, thread_id, instruction_id, instruction_pc);
+  return NULL;
+}
 
-	LL_APPEND(read_queue_head[channel], new_node);
+MemoryController::request_t* 
+MemoryController::matches_read_queue(PACKET* packet)
+{
+	//get channel info
+	dram_address_t * this_addr = calc_dram_addr(packet->address);
+	int channel = this_addr->channel;
+	free(this_addr);
 
-	read_queue_length[channel] ++;
+	request_t * rd_ptr = NULL;
 
-	//UT_MEM_DEBUG("\nCyc: %lld New READ:%lld Core:%d Chan:%d Rank:%d Bank:%d Row:%lld RD_Q_Length:%lld\n", CYCLE_VAL, new_node->id, new_node->thread_id, new_node->dram_addr.channel,  new_node->dram_addr.rank,  new_node->dram_addr.bank,  new_node->dram_addr.row, read_queue_length[channel]);
+	LL_FOREACH(read_queue_head[channel], rd_ptr)
+	{
+		if(rd_ptr->physical_address == packet->address)
+		{
+		  num_read_merge ++;
+		  stats_reads_merged_per_channel[channel]++;
+		  return rd_ptr;
+		}
+	}
+	return NULL;
+}
+
+int MemoryController::add_pq(PACKET *packet)
+{
+    return -1;
+}
+
+// Insert a new read to the read queue
+// thread id is cpu id
+// Note that add_rq uses address generated from ChampSim
+// TODO: need to set address parser
+//MemoryController::request_t* 
+//MemoryController::insert_read(long long int physical_address, 
+                              //long long int arrival_time, 
+                              //int thread_id, int instruction_id, 
+                              //long long int instruction_pc)
+int MemoryController::add_rq(PACKET* packet)
+{
+  // ChampSim
+  if (all_warmup_complete < NUM_CPUS) {
+    if (packet->instruction) 
+        upper_level_icache[packet->cpu]->return_data(packet);
+    if (packet->is_data)
+        upper_level_dcache[packet->cpu]->return_data(packet);
+
+    return -1;
+  }
+
+	dram_address_t * this_addr = calc_dram_addr(packet->address);
+	int channel = this_addr->channel;
+	free(this_addr);
+  stats_reads_seen[channel]++;
+
+  // READ data is bypassed from write queue
+  request_t* wr_ptr = matches_write_queue(packet);
+  if (wr_ptr != NULL) {
+    packet->data = wr_ptr->champsim_data;
+    if (packet->instruction)
+        upper_level_icache[packet->cpu]->return_data(packet);
+    if (packet->is_data) 
+        upper_level_dcache[packet->cpu]->return_data(packet);
+
+    return -1;
+  }
+
+  // check for duplicates in the READ queue
+  request_t* rd_ptr = matches_read_queue(packet);
+  if (rd_ptr != NULL) {
+    // while champ sim returns the index, the return data is not used in case of DRAM
+    // Thus, returns -1
+    return -1;
+  }
+  /// USIMM
+	optype_t this_op = READ;
+
+	request_t * new_node = 
+    init_new_node(this_op, packet);
+
+  LL_APPEND(read_queue_head[channel], new_node);
+
+  read_queue_length[channel]++;
 	
-	return new_node;
+	return -1;
 }
 
 // Insert a new write to the write queue
-MemoryController::request_t* 
-MemoryController::insert_write(long long int physical_address, 
-                               long long int arrival_time, 
-                               int thread_id, int instruction_id)
+//MemoryController::request_t* 
+//MemoryController::insert_write(long long int physical_address, 
+                               //long long int arrival_time, 
+                               //int thread_id, int instruction_id)
+int MemoryController::add_wq(PACKET* packet)
 {
-	optype_t this_op = WRITE;
+  // simply drop write requests before the warmup
+  if (all_warmup_complete < NUM_CPUS)
+      return -1;
 
-	dram_address_t * this_addr = calc_dram_addr(physical_address);
+	optype_t this_op = WRITE;
+	dram_address_t * this_addr = calc_dram_addr(packet->address);
 	int channel = this_addr->channel;
 	free(this_addr);
+	stats_writes_seen[channel]++;
 
-	stats_writes_seen[channel] ++;
+  // check for duplicates in the write queue
+  request_t* wr_ptr = matches_write_queue(packet);
+  if (wr_ptr != NULL)
+    return -1;
 
-	request_t * new_node = init_new_node(physical_address, arrival_time, this_op, thread_id, instruction_id, 0);
 
+	request_t * new_node = 
+    init_new_node(this_op, packet);
+ 
 	LL_APPEND(write_queue_head[channel], new_node);
 
-	write_queue_length[channel] ++;
+	write_queue_length[channel]++;
 
-	//UT_MEM_DEBUG("\nCyc: %lld New WRITE:%lld Core:%d Chan:%d Rank:%d Bank:%d Row:%lld WR_Q_Length:%lld\n", CYCLE_VAL, new_node->id, new_node->thread_id, new_node->dram_addr.channel,  new_node->dram_addr.rank,  new_node->dram_addr.bank,  new_node->dram_addr.row, write_queue_length[channel]);
-
-	return new_node;
+	return -1;
 }
 
 // Function to update the states of the read queue requests.
@@ -476,6 +626,7 @@ void MemoryController::update_read_queue_commands(int channel)
 
 		int row = curr->dram_addr.row;
 
+    uint64_t CYCLE_VAL = current_core_cycle[curr->champsim_cpu_id];
 		switch (dram_state[channel][rank][bank].state)
 		{
 		  // if the DRAM bank has no rows open and the chip is
@@ -577,6 +728,7 @@ void MemoryController::update_write_queue_commands(int channel)
 
 		int row = curr->dram_addr.row;
 
+    uint64_t CYCLE_VAL = current_core_cycle[curr->champsim_cpu_id];
 		switch (dram_state[channel][rank][bank].state)
 		{
 			case IDLE:
@@ -652,6 +804,24 @@ void MemoryController::update_write_queue_commands(int channel)
 		}
 	}
 }
+void MemoryController::check_pending_queues(int channel) {
+  if (pending_queue[channel].size() != 0) {
+    request_t* req_ptr = pending_queue[channel][0];
+    uint32_t from = req_ptr->champsim_cpu_id;
+    uint64_t cur_cycle = current_core_cycle[from];
+    if (req_ptr->completion_time <= cur_cycle) {
+      upper_level_dcache[from]->return_data(req_ptr->champsim_packet);
+
+      pending_queue[channel].pop_front();
+
+      if (req_ptr->user_ptr)
+        free(req_ptr->user_ptr);
+      
+      free(req_ptr);
+
+    }
+  }
+}
 
 // Remove finished requests from the queues.
 void MemoryController::clean_queues(int channel)
@@ -673,10 +843,14 @@ void MemoryController::clean_queues(int channel)
 
 			LL_DELETE(read_queue_head[channel],rd_ptr);
 
+      // will be freed after the completion time passes
+      pending_queue[channel].push_back(rd_ptr);
+      /*
 			if(rd_ptr->user_ptr)
 				free(rd_ptr->user_ptr);
 
 			free(rd_ptr);
+      */
 
 			read_queue_length[channel]--;
 
@@ -694,6 +868,7 @@ void MemoryController::clean_queues(int channel)
 
 			LL_DELETE(write_queue_head[channel],wrt_ptr);
 
+      // Do not need to push back to pending queue in the case of write
 			if(wrt_ptr->user_ptr)
 				free(wrt_ptr->user_ptr);
 
@@ -715,19 +890,20 @@ void MemoryController::clean_queues(int channel)
 // can be issued to each bank
 int MemoryController::issue_request_command(request_t * request) 
 {
-	long long int cycle =  CYCLE_VAL;
-	if(request->command_issuable != 1 || command_issued_current_cycle[request->dram_addr.channel])
-	{
-		printf("PANIC: SCHED_ERROR : Command for request selected can not be issued in  cycle:%lld.\n", CYCLE_VAL);
-		return 0;
-	}
 
 	int channel = request->dram_addr.channel;
 	int rank = request->dram_addr.rank;
 	int bank = request->dram_addr.bank;
 	long long int row = request->dram_addr.row;
 	command_t cmd = request->next_command;
+  uint64_t CYCLE_VAL = current_core_cycle[request->champsim_cpu_id];
 
+	long long int cycle =  CYCLE_VAL;
+	if(request->command_issuable != 1 || command_issued_current_cycle[request->dram_addr.channel])
+	{
+		printf("PANIC: SCHED_ERROR : Command for request selected can not be issued in  cycle:%lld.\n", CYCLE_VAL);
+		return 0;
+	}
 	switch(cmd)
 	{
 		case ACT_CMD :
@@ -979,6 +1155,8 @@ int MemoryController::issue_request_command(request_t * request)
 int MemoryController::is_powerdown_fast_allowed(int channel, int rank)
 {
 	int flag =0;
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 
 	// if already a command has been issued this cycle, or if
 	// forced refreshes are underway, or if issuing this command
@@ -1004,6 +1182,8 @@ int MemoryController::is_powerdown_slow_allowed(int channel, int rank)
 {
 	int flag =0;
 
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank] || (CYCLE_VAL +T_PD_MIN+T_XP_DLL > refresh_issue_deadline[channel][rank])) 
 	  return 0;
 
@@ -1027,6 +1207,8 @@ int MemoryController::is_powerdown_slow_allowed(int channel, int rank)
 // Function to see if the rank can be powered up
 int MemoryController::is_powerup_allowed(int channel, int rank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank])
 	  return 0;
 
@@ -1048,6 +1230,8 @@ int MemoryController::is_powerup_allowed(int channel, int rank)
 // Function to see if the bank can be activated or not
 int MemoryController::is_activate_allowed(int channel, int rank, int bank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank] || (CYCLE_VAL + T_RAS > refresh_issue_deadline[channel][rank])) 
 	  return 0;
 	if ((dram_state[channel][rank][bank].state == IDLE || dram_state[channel][rank][bank].state == PRECHARGING || dram_state[channel][rank][bank].state == REFRESHING) && (CYCLE_VAL >= dram_state[channel][rank][bank].next_act) && (is_T_FAW_met(channel,rank,CYCLE_VAL)))
@@ -1059,6 +1243,8 @@ int MemoryController::is_activate_allowed(int channel, int rank, int bank)
 // Function to see if the rank can be precharged or not
 int MemoryController::is_autoprecharge_allowed(int channel, int rank, int bank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
   long long int start_precharge = 0;
   if(cas_issued_current_cycle[channel][rank][bank] == 1)
     start_precharge = max(CYCLE_VAL + T_RTP, dram_state[channel][rank][bank].next_pre);
@@ -1075,6 +1261,8 @@ int MemoryController::is_autoprecharge_allowed(int channel, int rank, int bank)
 // Function to see if the rank can be precharged or not
 int MemoryController::is_precharge_allowed(int channel, int rank, int bank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank] || (CYCLE_VAL + T_RP > refresh_issue_deadline[channel][rank])) 
 	    return 0;
 
@@ -1088,6 +1276,8 @@ int MemoryController::is_precharge_allowed(int channel, int rank, int bank)
 // function to see if all banks can be precharged this cycle
 int MemoryController::is_all_bank_precharge_allowed(int channel, int rank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
   	int flag = 0;
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank] || (CYCLE_VAL + T_RP > refresh_issue_deadline[channel][rank])) 
 	  return 0;
@@ -1106,6 +1296,8 @@ int MemoryController::is_all_bank_precharge_allowed(int channel, int rank)
 
 int MemoryController::is_refresh_allowed(int channel, int rank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if (command_issued_current_cycle[channel] || forced_refresh_mode_on[channel][rank]) 
 	  return 0;
 
@@ -1120,6 +1312,8 @@ int MemoryController::is_refresh_allowed(int channel, int rank)
 // Function to put a rank into the low power mode
 int MemoryController::issue_powerdown_command(int channel, int rank, command_t cmd)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
         if(command_issued_current_cycle[channel]) {
 		printf("PANIC : SCHED_ERROR: Got beat. POWER_DOWN command not issuable in cycle:%lld\n", CYCLE_VAL);
 		return 0;
@@ -1173,6 +1367,8 @@ int MemoryController::issue_powerdown_command(int channel, int rank, command_t c
 // Function to power a rank up
 int MemoryController::issue_powerup_command(int channel, int rank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if(!is_powerup_allowed(channel,rank)) 
 	{
 		printf("PANIC : SCHED_ERROR: POWER_UP command not issuable in cycle:%lld\n", CYCLE_VAL);
@@ -1234,6 +1430,8 @@ int MemoryController::issue_powerup_command(int channel, int rank)
 // Function to issue a precharge command to a specific bank
 int MemoryController::issue_autoprecharge(int channel, int rank, int bank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
   if(!is_autoprecharge_allowed(channel,rank,bank))
     return 0;
   else
@@ -1272,6 +1470,8 @@ int MemoryController::issue_autoprecharge(int channel, int rank, int bank)
 // Function to issue an activate command to a specific row
 int MemoryController::issue_activate_command(int channel, int rank, int bank, long long int row)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
   if(!is_activate_allowed(channel, rank, bank))
   {
 		printf("PANIC : SCHED_ERROR: ACTIVATE command not issuable in cycle:%lld\n", CYCLE_VAL);
@@ -1320,6 +1520,8 @@ int MemoryController::issue_activate_command(int channel, int rank, int bank, lo
 // Function to issue a precharge command to a specific bank
 int MemoryController::issue_precharge_command(int channel, int rank, int bank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if(!is_precharge_allowed(channel, rank, bank))
 	{
 		printf("PANIC : SCHED_ERROR: PRECHARGE command not issuable in cycle:%lld\n", CYCLE_VAL);
@@ -1350,6 +1552,8 @@ int MemoryController::issue_precharge_command(int channel, int rank, int bank)
 // Function to precharge a rank
 int MemoryController::issue_all_bank_precharge_command(int channel, int rank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	if(!is_all_bank_precharge_allowed(channel, rank))
 	{
 		printf("PANIC : SCHED_ERROR: ALL_BANK_PRECHARGE command not issuable in cycle:%lld\n", CYCLE_VAL);
@@ -1370,6 +1574,8 @@ int MemoryController::issue_all_bank_precharge_command(int channel, int rank)
 // Function to issue a refresh
 int MemoryController::issue_refresh_command(int channel,int rank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 
 	if(!is_refresh_allowed(channel,rank))
 	{
@@ -1559,11 +1765,13 @@ void MemoryController::update_issuable_commands(int channel)
 // function that updates the dram state and schedules auto-refresh if
 // necessary. This is called every DRAM cycle
 void MemoryController::update_memory()
-{
+{  
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	for(int channel=0;channel<NUM_CHANNELS;channel++)
 	{
-	        // make every channel ready to receive a new command
-	  	command_issued_current_cycle[channel] = 0;
+    // make every channel ready to receive a new command
+    command_issued_current_cycle[channel] = 0;
 		for(int rank =0;rank<NUM_RANKS ; rank++)
 		{
 		        //reset variable
@@ -1613,6 +1821,8 @@ void MemoryController::update_memory()
 
 		// remove finished requests
 		clean_queues(channel);
+
+    check_pending_queues(channel);
 	}
 }
 
@@ -1626,6 +1836,8 @@ void MemoryController::update_memory()
 
  float MemoryController::calculate_power(int channel, int rank, int print_stats_type, int chips_per_rank)
 {
+  // TODO: which core cycle to use?
+  uint64_t CYCLE_VAL = current_core_cycle[0];
 	/*
 	Power is calculated using the equations from Technical Note "TN-41-01: Calculating Memory System Power for DDR"
 	The current values IDD* are taken from the data sheets. 

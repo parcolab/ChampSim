@@ -1,16 +1,35 @@
 #ifndef __MEMORY_CONTROLLER_H__
 #define __MEMORY_CONTROLLER_H__
 
+#include <deque>
+
 #include "../../inc/memory_class.h"
 #include "scheduler.h"
+
+// DRAM configuration
+#define DRAM_CHANNEL_WIDTH 8 // 8B
+#define DRAM_WQ_SIZE 64
+#define DRAM_RQ_SIZE 64
+
+#define tRP_DRAM_NANOSECONDS  12.5
+#define tRCD_DRAM_NANOSECONDS 12.5
+#define tCAS_DRAM_NANOSECONDS 12.5
+
+#define DRAM_DBUS_TURN_AROUND_TIME ((15*CPU_FREQ)/2000) // 7.5 ns 
+extern uint32_t DRAM_MTPS, DRAM_DBUS_RETURN_TIME;
+
+// these values control when to send out a burst of writes
+#define DRAM_WRITE_HIGH_WM    ((DRAM_WQ_SIZE*7)>>3) // 7/8th
+#define DRAM_WRITE_LOW_WM     ((DRAM_WQ_SIZE*3)>>2) // 6/8th
+#define MIN_DRAM_WRITES_PER_SWITCH (DRAM_WQ_SIZE*1/4)
+
 #define MAX_NUM_CHANNELS 16
 #define MAX_NUM_RANKS 16
 #define MAX_NUM_BANKS 32
 
 // Moved here from main.c 
-long long int *committed; // total committed instructions in each core
-long long int *fetched;   // total fetched instructions in each core
-
+//long long int *committed; // total committed instructions in each core
+//long long int *fetched;   // total fetched instructions in each core
 
 //////////////////////////////////////////////////
 //	Memory Controller Data Structures	//
@@ -19,7 +38,7 @@ long long int *fetched;   // total fetched instructions in each core
 // DRAM Address Structure
 class MemoryController : public MEMORY {
 public:
-  MemoryController() {}
+  MemoryController(std::string name);
 
   typedef struct draddr
   {
@@ -40,6 +59,11 @@ public:
   // Single request structure self-explanatory
   typedef struct req
   {
+    uint64_t champsim_data;
+    int champsim_instruction_id;
+    int champsim_cpu_id;
+    PACKET* champsim_packet;
+
     unsigned long long int physical_address;
     dram_address_t dram_addr;
     long long int arrival_time;     
@@ -76,6 +100,10 @@ public:
     long long int next_powerup;
     long long int next_refresh;
   }bank_t;
+
+  int fill_level;
+
+  const std::string NAME;
 
   // contains the states of all banks in the system 
   bank_t dram_state[MAX_NUM_CHANNELS][MAX_NUM_RANKS][MAX_NUM_BANKS];
@@ -156,6 +184,7 @@ public:
   long long int stats_num_powerup[MAX_NUM_CHANNELS][MAX_NUM_RANKS];
 
 
+  std::vector<uint64_t> wq_full;
 
   // functions
 
@@ -241,7 +270,20 @@ public:
   // schedule() call from schedule.c
   void schedule(int channel);
 
+  int add_rq(PACKET* packet);
+  int add_wq(PACKET* packet);
+  int add_pq(PACKET* packet);
+
+  void return_data(PACKET* packet) {}
+  void operate() {}
+  void increment_WQ_FULL(uint64_t address);
+
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address);
+  uint32_t get_size(uint8_t queue_type, uint64_t address);
+
 private:
+  std::vector<std::deque<request_t*>> pending_queue;
+
   void update_issuable_commands(int channel);
   void issue_forced_refresh_commands(int channel, int rank);
   dram_address_t * calc_dram_addr(long long int physical_address);
@@ -253,10 +295,18 @@ private:
   void update_write_queue_commands(int channel);
 
   void clean_queues(int channel);
+  void check_pending_queues(int channel);
 
-  request_t* init_new_node(long long int physical_address, 
-                           long long int arrival_time, optype_t type, 
-                           int thread_id, int instruction_id, 
-                           long long int instruction_pc);
+  request_t* init_new_node(optype_t type, PACKET* packet);
+
+  uint32_t dram_get_channel(uint64_t address);
+  uint32_t dram_get_rank(uint64_t address);
+  uint32_t dram_get_bank(uint64_t address);
+  uint32_t dram_get_row(uint64_t address);
+  uint32_t dram_get_column(uint64_t address); 
+
+  request_t* matches_read_queue(PACKET* packet);
+  request_t* matches_write_queue(PACKET* packet);
+
 };
 #endif // __MEM_CONTROLLER_HH__
