@@ -2,6 +2,7 @@
 #define __MEMORY_CONTROLLER_H__
 
 #include "../../inc/memory_class.h"
+#include "scheduler.h"
 #define MAX_NUM_CHANNELS 16
 #define MAX_NUM_RANKS 16
 #define MAX_NUM_BANKS 32
@@ -236,6 +237,10 @@ public:
 
   // calculate power for each channel
   float calculate_power(int channel, int rank, int print_stats_type, int chips_per_rank);
+
+  // schedule() call from schedule.c
+  void schedule(int channel);
+
 private:
   void update_issuable_commands(int channel);
   void issue_forced_refresh_commands(int channel, int rank);

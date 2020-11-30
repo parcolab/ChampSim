@@ -25,6 +25,10 @@ extern long long int CYCLE_VAL;
 // moving window that captures each activate issued in the past 
 int activation_record[MAX_NUM_CHANNELS][MAX_NUM_RANKS][BIG_ACTIVATION_WINDOW];
 
+void MemoryController::schedule(int channel) {
+  schedule(channel);
+}
+
 // record an activate in the activation record
 void MemoryController::record_activate(int channel, int rank, long long int cycle)
 {
