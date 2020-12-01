@@ -11,6 +11,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <math.h>
 #include "../inc/cache.h"
 
 using namespace std;
@@ -215,10 +216,8 @@ uint64_t BloomFilter::getSize()
 
 /******************LIME*******************/
 
-int NUM_CORE; 
-int LLC_SETS ;
-int LLC_SETS_LOG2 ;
-#define LLC_WAYS 16
+int LLC_SET_LOG2 ;
+//#define LLC_WAY 16
 #define maxRRPV 7
 
 //Load/Store instruction category
@@ -228,11 +227,11 @@ int LLC_SETS_LOG2 ;
 #define FRIENDLY 3
 
 //
-#define SAMPLE_COUNT 128 // LLC_WAYS<<3 
+#define SAMPLE_COUNT 128 // LLC_WAY<<3 
 #define OV_size 128
 int ALIAS_TAB_SIZE;
 
-uint32_t rrpv[8192][LLC_WAYS];
+uint32_t rrpv[8192][LLC_WAY];
 uint64_t cold_misses;
 vector<vector<uint32_t>> ov;
 vector<vector<bool>> hv;
@@ -248,22 +247,17 @@ vector<pair<uint64_t,bool>> alias_table;
 void CACHE::llc_initialize_replacement()
 {
     //int cfg = get_config_number();
+    LLC_SET_LOG2 = (int)log2(LLC_SET);
     if(NUM_CPUS == 1){
-        NUM_CORE=1;
-        LLC_SETS  = NUM_CORE*2048;
-        LLC_SETS_LOG2 = 11;
-        ALIAS_TAB_SIZE = NUM_CORE*64 ;
+        ALIAS_TAB_SIZE = NUM_CPUS*64 ;
     }
     else if(NUM_CPUS == 4){
-        NUM_CORE=4;
-        LLC_SETS  = NUM_CORE*2048;
-        LLC_SETS_LOG2 = 13;
-        ALIAS_TAB_SIZE = NUM_CORE*64 ;
+        ALIAS_TAB_SIZE = NUM_CPUS*64 ;
     
     }
 
-    for (int i=0; i<LLC_SETS; i++) {
-        for (int j=0; j<LLC_WAYS; j++) {
+    for (int i=0; i<LLC_SET; i++) {
+        for (int j=0; j<LLC_WAY; j++) {
             rrpv[i][j] = maxRRPV;
         }
     }
@@ -272,7 +266,7 @@ void CACHE::llc_initialize_replacement()
     pc_streaming_filter = new BloomFilter(4096, 6);
 
 
-    int sample_sets_num = 20*NUM_CORE;
+    int sample_sets_num = 20*NUM_CPUS;
     if(NUM_CPUS == 1){
         int random_number[20]={46, 102, 257, 406, 510, 630, 772, 880, 981, 1088, 1163, 1206, 1311, 1436, 1543, 1644, 1735, 1810, 1956, 2017};
         for(int i=0; i<sample_sets_num; i++){
@@ -286,19 +280,19 @@ void CACHE::llc_initialize_replacement()
         }
     }
 
-    for (int i=0; i<LLC_SETS; i++) {
+    for (int i=0; i<LLC_SET; i++) {
         std::vector<uint32_t> init;
         ov.push_back(init);
         std::vector<bool> init2;
         hv.push_back(init2);
     }
     
-    for (int i=0; i<LLC_SETS; i++){
+    for (int i=0; i<LLC_SET; i++){
         std::vector<pair<uint64_t, uint64_t>> init;
         history.push_back(init);
     }
 
-    for (int i=0; i<LLC_SETS; i++) {
+    for (int i=0; i<LLC_SET; i++) {
         id[i] = 0;
     }
 
@@ -315,7 +309,7 @@ uint32_t hash18(uint64_t pc)
 
 uint64_t hash37(uint64_t tag_addr)
 {
-    uint64_t top8 = (tag_addr<<(6+LLC_SETS_LOG2)) >> 56;
+    uint64_t top8 = (tag_addr<<(6+LLC_SET_LOG2)) >> 56;
     uint64_t hash = (top8<<29) + (tag_addr&0x1fffffff);
     return hash;
 }
@@ -379,21 +373,21 @@ uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, c
         return 0;
 
     if(type == 2)
-        return LLC_WAYS;
+        return LLC_WAY;
 
     if(getPCCategory(PC) == STREAMING && type!=3){
-        return LLC_WAYS;
+        return LLC_WAY;
     }
 
     // look for the maxRRPV line
     while (1)
     {
-        for (int i=0; i<LLC_WAYS; i++)
+        for (int i=0; i<LLC_WAY; i++)
             if (rrpv[set][i] == maxRRPV){
                 return i;
             }
 
-        for (int i=0; i<LLC_WAYS; i++)
+        for (int i=0; i<LLC_WAY; i++)
             rrpv[set][i]++;
     }
 
@@ -415,7 +409,7 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
         if(set == 7494)
             cout << "cfg 3/4" << endl;
 */
-        uint64_t tag_addr = paddr >> (6 + LLC_SETS_LOG2);
+        uint64_t tag_addr = paddr >> (6 + LLC_SET_LOG2);
             // ---- Update History
         if (history[set].size() >= OV_size) {
             if(hv[set][0] == false){
@@ -448,7 +442,7 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
         if (start >= 0){
             bool keep = true;
             for(int i=start; i<end; i++){
-                keep = keep && (ov[set][i]<LLC_WAYS-1);
+                keep = keep && (ov[set][i]<LLC_WAY-1);
                 if(!keep)
                     break;
             }
@@ -467,7 +461,7 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
         }
     }
 
-    if(way == LLC_WAYS){
+    if(way == LLC_WAY){
         return; 
     }
     int category = getPCCategory(PC);
@@ -498,7 +492,7 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
             case THRASH:
             case FRIENDLY:
                 rrpv[set][way] = 0;
-                for(uint64_t i=0; i< LLC_WAYS; i++){
+                for(uint64_t i=0; i< LLC_WAY; i++){
                     if(i != way && (rrpv[set][i] < 6))
                         rrpv[set][i]+=1;
                 }

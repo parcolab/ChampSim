@@ -19,7 +19,7 @@ unsigned int
 	num_core;
 
 #define MAX_PATH_LENGTH 16
-#define LLC_WAYS	16
+//#define LLC_WAY	16
 
 // for printing space calculations
 
@@ -93,7 +93,7 @@ int Get_Sampler_Victim ( uint32_t tid, uint32_t setIndex, const BLOCK *current_s
 // return value should be 0 ~ 15 or 16 (bypass)
 
 uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t PC, uint64_t paddr, uint32_t type) {
-	return Get_Sampler_Victim (cpu, set, current_set, LLC_WAYS, PC, paddr, type);
+	return Get_Sampler_Victim (cpu, set, current_set, LLC_WAY, PC, paddr, type);
 }
 
 // use this function to print out your own stats on every heartbeat 
@@ -462,9 +462,9 @@ void CACHE::llc_initialize_replacement() {
 		rrpv = new unsigned char*[llc_sets];
 		int rrpv_bits = 0;
 		for (unsigned int i=0; i<llc_sets; i++) {
-			rrpv[i] = new unsigned char[LLC_WAYS];
-			memset (rrpv[i], 3, LLC_WAYS);
-			rrpv_bits += 2 * LLC_WAYS;
+			rrpv[i] = new unsigned char[LLC_WAY];
+			memset (rrpv[i], 3, LLC_WAY);
+			rrpv_bits += 2 * LLC_WAY;
 		}
 		total_bits += rrpv_bits;
 	} else if (num_core == 1) {
@@ -474,9 +474,9 @@ void CACHE::llc_initialize_replacement() {
 		int bits = 0;
 		plru_bits = new bool*[llc_sets];
 		for (unsigned int i=0; i<llc_sets; i++) {
-			plru_bits[i] = new bool[LLC_WAYS-1];
-			memset (plru_bits[0], 0, LLC_WAYS-1);
-			bits += LLC_WAYS-1;
+			plru_bits[i] = new bool[LLC_WAY-1];
+			memset (plru_bits[0], 0, LLC_WAY-1);
+			bits += LLC_WAY-1;
 		}
 		total_bits += bits;
 	} else assert (0);
@@ -497,7 +497,7 @@ void CACHE::llc_initialize_replacement() {
 
 	// initialize sampler
 
-	samp = new sdbp_sampler (llc_sets, LLC_WAYS);
+	samp = new sdbp_sampler (llc_sets, LLC_WAY);
 
 	// at this point, the specs are set; we can compute the sizes
 
@@ -560,8 +560,8 @@ static bool was_burst;
 static void update_plru_mdpp (int set, int32_t wayID, bool hit, int *vector, uint32_t accessType, bool really = true, int conf = 0) {
 	assert (!dan_use_rrip);
 	assert (wayID < 16);
-	bool P[LLC_WAYS-1];
-	memcpy (P, plru_bits[set], LLC_WAYS-1);
+	bool P[LLC_WAY-1];
+	memcpy (P, plru_bits[set], LLC_WAY-1);
 	unsigned int idx = 0;
 	unsigned int x;
 	bool wasodd = false;
@@ -574,7 +574,7 @@ static void update_plru_mdpp (int set, int32_t wayID, bool hit, int *vector, uin
 	} else {
 		// get the current plru index
 		// build the index starting from a leaf and going to the root
-		x = wayID + LLC_WAYS - 1;
+		x = wayID + LLC_WAY - 1;
 		int i = 0;
 		while (x) {
 			wasodd = x & 1;
@@ -590,7 +590,7 @@ static void update_plru_mdpp (int set, int32_t wayID, bool hit, int *vector, uin
 	// set the new plru index for this block
 
 	wasodd = false;
-	x = wayID + LLC_WAYS - 1;
+	x = wayID + LLC_WAY - 1;
 	int i = 0;
 	bool changed = false;
 	while (x) {
@@ -609,7 +609,7 @@ static void update_plru_mdpp (int set, int32_t wayID, bool hit, int *vector, uin
 	// we might not "really" want to update state if we are just
 	// calling this function to see if we had a cache burst
 
-	if (really) memcpy (plru_bits[set], P, LLC_WAYS-1);
+	if (really) memcpy (plru_bits[set], P, LLC_WAY-1);
 }
 
 // get the PseudoLRU victim
@@ -618,7 +618,7 @@ static int get_mdpp_plru_victim (int set) {
 	// find the pseudo-lru block
 	bool *P = plru_bits[set];
 
-	int a = LLC_WAYS - 1;
+	int a = LLC_WAY - 1;
 	unsigned int x = 0;
 	int level = 0;
 	while (a) {
@@ -629,7 +629,7 @@ static int get_mdpp_plru_victim (int set) {
 			x = PLRU_LEFT(x);
 		a /= 2;
 	}
-	x -= (LLC_WAYS-1);
+	x -= (LLC_WAY-1);
 	return x;
 }
 
@@ -814,7 +814,7 @@ int Get_Sampler_Victim ( uint32_t tid, uint32_t setIndex, const BLOCK *current_s
 	int r;
 	if (dan_use_rrip) {
 startover:
-		int lrus[LLC_WAYS], n = 0;
+		int lrus[LLC_WAY], n = 0;
 		for (unsigned int wayID=0; wayID<assoc; wayID++) {
 			if (rrpv[setIndex][wayID] == 3) lrus[n++] = wayID;
 		}
@@ -853,7 +853,7 @@ startover:
 		// if block is predicted dead, then it should bypass the cache
 	
 		if (prediction) {
-			r = LLC_WAYS; // means bypass
+			r = LLC_WAY; // means bypass
 		}
 	}
 
