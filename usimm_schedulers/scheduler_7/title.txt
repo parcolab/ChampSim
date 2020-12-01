@@ -1,0 +1,3 @@
+Priority Based Fair Scheduling: A Memory Scheduler Design for Chip-Multiprocessor Systems
+
+Chongmin Li, Dongsheng Wang, Haixia Wang, and Yibo Xue (Department of Computer Science & Technology, Tsinghua University)

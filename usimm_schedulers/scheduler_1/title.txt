@@ -1,0 +1,3 @@
+Request Density Aware Fair Memory Scheduling
+
+Takakazu Ikeda (Tokyo Institute of Technology), Shinya Takamaeda-Yamazaki (Tokyo Institute of Technology / JSPS Research Fellow), and Naoki Fujieda, Shimpei Sato, and Kenji Kise (Tokyo Institute of Technology).

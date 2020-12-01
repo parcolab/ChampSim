@@ -1,0 +1,3 @@
+Stride- and Global History-based DRAM Page Management
+
+Mushfique Junayed Khurshid, Mohit Chainani, Alekhya Perugupalli, and Rahul Srikumar (University of Wisconsin-Madison)

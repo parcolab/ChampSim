@@ -1,0 +1,3 @@
+Thread-Fair Memory Request Reordering
+
+Kun Fang, Nick Iliev, Ehsan Noohi, Suyu Zhang, and Zhichun Zhu (University of Illinois at Chicago)

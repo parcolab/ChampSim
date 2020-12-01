@@ -1,0 +1,3 @@
+High Performance Memory Access Scheduling using Compute-Phase Prediction and Writeback-Refresh Overlap
+
+Yasuo Ishii (The University of Tokyo, NEC Corporation) and Kouhei Hosokawa, Mary Inaba, and Kei Hiraki (The University of Tokyo)

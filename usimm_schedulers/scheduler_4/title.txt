@@ -1,0 +1,3 @@
+The Compact Memory Scheduling Maximizing Row Buffer Locality
+
+Young-Suk Moon, Yongkee Kwon, Hong-Sik Kim, Dong-gun Kim, Hyungdong Hayden Lee, and Kunwoo park (SK Hynix)
