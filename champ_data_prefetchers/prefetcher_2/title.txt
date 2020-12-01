@@ -1,0 +1,3 @@
+Accurately and Maximally Prefetching Spatial Data Access Patterns with Bingo
+
+Mohammad Bakhshalipour, Mehran Shakerinava, Pejman Lotfi-Kamran, Hamid Sarbazi-Azad (presenter: Farid Samandi)

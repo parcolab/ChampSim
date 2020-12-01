@@ -1,0 +1,3 @@
+ReD: A Policy Based on Reuse Detection for a Demanding Block Selection in Last-Level Caches
+
+J. Díaz, P. Ibáñez, T. Monreal, V. Viñals, J. Llabería (University of Zaragoza)

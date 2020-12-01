@@ -1,0 +1,3 @@
+SHiP++: Enhancing Signature-Based Hit Predictor for Improved Cache Performance
+
+V. Young, C. Chou, A. Jaleel, M. Qureshi (Georgia Institute of Technology)

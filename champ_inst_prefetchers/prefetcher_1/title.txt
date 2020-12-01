@@ -1,0 +1,3 @@
+D-JOLT: Distant Jolt Prefetcher
+
+Tomoki Nakamura (The University of Tokyo), Toru Koizumi (The University of Tokyo), Yuya Degawa (The University of Tokyo), Hidetsugu Irie (The University of Tokyo), Shuichi Sakai (The University of Tokyo), Ryota Shioya (The University of Tokyo)

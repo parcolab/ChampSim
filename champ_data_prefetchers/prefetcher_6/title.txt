@@ -1,0 +1,3 @@
+Pangloss: a novel Markov chain prefetcher
+
+Philippos Papaphilippou, Paul H. J. Kelly, Wayne Luk

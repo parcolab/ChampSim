@@ -152,7 +152,7 @@ int activates[MAX_NUM_CHANNELS][MAX_NUM_RANKS][MAX_NUM_BANKS];
 		
 
 //stride table
-struct StrideTableentry ST[1024];
+struct StrideTableentry STT[1024];
  
 
 
@@ -372,9 +372,9 @@ void MemoryController::schedule(int channel)
 				Isused[wr_ptr->dram_addr.rank][wr_ptr->dram_addr.bank]=2;
 			
 			//initialise stride table
-			ST[wr_ptr->instruction_pc%1024].laststride = 0;
-			ST[wr_ptr->instruction_pc%1024].prev_address = 0;
-			ST[wr_ptr->instruction_pc%1024].detected = 0;
+			STT[wr_ptr->instruction_pc%1024].laststride = 0;
+			STT[wr_ptr->instruction_pc%1024].prev_address = 0;
+			STT[wr_ptr->instruction_pc%1024].detected = 0;
 			
 			//first ready served
 			if(wr_ptr->command_issuable && wr_ptr->next_command == COL_WRITE_CMD)
@@ -391,19 +391,19 @@ void MemoryController::schedule(int channel)
 		{
 			
 			//detect strides
-			if(ST[wr_ptr->instruction_pc%1024].laststride == 0 && ST[wr_ptr->instruction_pc%1024].prev_address == 0)
+			if(STT[wr_ptr->instruction_pc%1024].laststride == 0 && STT[wr_ptr->instruction_pc%1024].prev_address == 0)
 			{
-				ST[wr_ptr->instruction_pc%1024].prev_address = wr_ptr->physical_address;
+				STT[wr_ptr->instruction_pc%1024].prev_address = wr_ptr->physical_address;
 			}
-			else if ( ST[wr_ptr->instruction_pc%1024].laststride == 0 )
+			else if ( STT[wr_ptr->instruction_pc%1024].laststride == 0 )
 			{
-				ST[wr_ptr->instruction_pc%1024].laststride = wr_ptr->physical_address - ST[wr_ptr->instruction_pc%1024].prev_address;
-				ST[wr_ptr->instruction_pc%1024].prev_address = wr_ptr->physical_address;
+				STT[wr_ptr->instruction_pc%1024].laststride = wr_ptr->physical_address - STT[wr_ptr->instruction_pc%1024].prev_address;
+				STT[wr_ptr->instruction_pc%1024].prev_address = wr_ptr->physical_address;
 			}
-			else if (ST[wr_ptr->instruction_pc%1024].laststride == wr_ptr->physical_address - ST[wr_ptr->instruction_pc%1024].prev_address)
+			else if (STT[wr_ptr->instruction_pc%1024].laststride == wr_ptr->physical_address - STT[wr_ptr->instruction_pc%1024].prev_address)
 			{
-				ST[wr_ptr->instruction_pc%1024].detected = 1;
-				ST[wr_ptr->instruction_pc%1024].prev_address = wr_ptr->physical_address;	
+				STT[wr_ptr->instruction_pc%1024].detected = 1;
+				STT[wr_ptr->instruction_pc%1024].prev_address = wr_ptr->physical_address;	
 			}
 
 			if(wr_ptr->command_issuable)
@@ -430,9 +430,9 @@ void MemoryController::schedule(int channel)
 
 		LL_FOREACH(read_queue_head[channel],rd_ptr)
 		{
-			ST[rd_ptr->instruction_pc%1024].laststride = 0;
-			ST[rd_ptr->instruction_pc%1024].prev_address = 0;
-			ST[rd_ptr->instruction_pc%1024].detected = 0;
+			STT[rd_ptr->instruction_pc%1024].laststride = 0;
+			STT[rd_ptr->instruction_pc%1024].prev_address = 0;
+			STT[rd_ptr->instruction_pc%1024].detected = 0;
 
 			
 			
@@ -457,19 +457,19 @@ void MemoryController::schedule(int channel)
 
 		LL_FOREACH(read_queue_head[channel],rd_ptr)
 		{
-			if(ST[rd_ptr->instruction_pc%1024].laststride == 0 && ST[rd_ptr->instruction_pc%1024].prev_address == 0)
+			if(STT[rd_ptr->instruction_pc%1024].laststride == 0 && STT[rd_ptr->instruction_pc%1024].prev_address == 0)
 			{
-				ST[rd_ptr->instruction_pc%1024].prev_address = rd_ptr->physical_address;
+				STT[rd_ptr->instruction_pc%1024].prev_address = rd_ptr->physical_address;
 			}
-			else if ( ST[rd_ptr->instruction_pc%1024].laststride == 0 )
+			else if ( STT[rd_ptr->instruction_pc%1024].laststride == 0 )
 			{
-				ST[rd_ptr->instruction_pc%1024].laststride = rd_ptr->physical_address - ST[rd_ptr->instruction_pc%1024].prev_address;
-				ST[rd_ptr->instruction_pc%1024].prev_address = rd_ptr->physical_address;
+				STT[rd_ptr->instruction_pc%1024].laststride = rd_ptr->physical_address - STT[rd_ptr->instruction_pc%1024].prev_address;
+				STT[rd_ptr->instruction_pc%1024].prev_address = rd_ptr->physical_address;
 			}
-			else if (ST[rd_ptr->instruction_pc%1024].laststride == rd_ptr->physical_address - ST[rd_ptr->instruction_pc%1024].prev_address)
+			else if (STT[rd_ptr->instruction_pc%1024].laststride == rd_ptr->physical_address - STT[rd_ptr->instruction_pc%1024].prev_address)
 			{
-				ST[rd_ptr->instruction_pc%1024].detected = 1;
-				ST[rd_ptr->instruction_pc%1024].prev_address = rd_ptr->physical_address;	
+				STT[rd_ptr->instruction_pc%1024].detected = 1;
+				STT[rd_ptr->instruction_pc%1024].prev_address = rd_ptr->physical_address;	
 			}
 
 			if(rd_ptr->command_issuable && Isused[rd_ptr->dram_addr.rank][rd_ptr->dram_addr.bank]<2)
@@ -500,13 +500,13 @@ void MemoryController::schedule(int channel)
 		LL_FOREACH(write_queue_head[channel], wr_ptr)
 		{
 			
-			if(ST[wr_ptr->instruction_pc%1024].detected == 1)
+			if(STT[wr_ptr->instruction_pc%1024].detected == 1)
 			{
 				for(j=1;j<7;j++)
 				{
-					long long int next_physical= ST[wr_ptr->instruction_pc%1024].prev_address + j*ST[wr_ptr->instruction_pc%1024].laststride;
+					long long int next_physical= STT[wr_ptr->instruction_pc%1024].prev_address + j*STT[wr_ptr->instruction_pc%1024].laststride;
 					dram_address_t next_dram_addr=calc_dram_addr_copy(next_physical);
-					dram_address_t prev_address = calc_dram_addr_copy(ST[wr_ptr->instruction_pc%1024].prev_address);
+					dram_address_t prev_address = calc_dram_addr_copy(STT[wr_ptr->instruction_pc%1024].prev_address);
 					if (next_dram_addr.channel==channel)
 					{
 						if((prev_address.rank!=next_dram_addr.rank)||(prev_address.bank!=next_dram_addr.bank)||(prev_address.row!=next_dram_addr.row))
@@ -541,7 +541,7 @@ void MemoryController::schedule(int channel)
 	
 					}
 				}
-				ST[wr_ptr->instruction_pc%1024].detected = 0;
+				STT[wr_ptr->instruction_pc%1024].detected = 0;
 
 			}
 			
@@ -553,13 +553,13 @@ void MemoryController::schedule(int channel)
 		LL_FOREACH(read_queue_head[channel], rd_ptr)
 		{
 			
-			if(ST[rd_ptr->instruction_pc%1024].detected == 1)
+			if(STT[rd_ptr->instruction_pc%1024].detected == 1)
 			{
 				for(j=1;j<7;j++)
 				{
-					long long int next_physical= ST[rd_ptr->instruction_pc%1024].prev_address + j*ST[rd_ptr->instruction_pc%1024].laststride;
+					long long int next_physical= STT[rd_ptr->instruction_pc%1024].prev_address + j*STT[rd_ptr->instruction_pc%1024].laststride;
 					dram_address_t next_dram_addr=calc_dram_addr_copy(next_physical);
-					dram_address_t prev_address = calc_dram_addr_copy(ST[rd_ptr->instruction_pc%1024].prev_address);
+					dram_address_t prev_address = calc_dram_addr_copy(STT[rd_ptr->instruction_pc%1024].prev_address);
 					if (next_dram_addr.channel==channel)
 					{
 						if((prev_address.rank!=next_dram_addr.rank)||(prev_address.bank!=next_dram_addr.bank)||(prev_address.row!=next_dram_addr.row))
@@ -584,7 +584,7 @@ void MemoryController::schedule(int channel)
 						
 					}
 				}
-				ST[rd_ptr->instruction_pc%1024].detected = 0;
+				STT[rd_ptr->instruction_pc%1024].detected = 0;
 
 			}
 		}
